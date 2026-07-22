@@ -143,29 +143,25 @@ function unifing_ctl($action)
     shell_exec(UNIFING_CTL . " " . $action . " > /dev/null 2>&1 &");
 }
 
-function unifing_diagnostics()
+function unifing_diagnostics_sections()
 {
-    $sections = array();
+    global $L;
 
-    $status = shell_exec("systemctl status " . UNIFING_SERVICE . " --no-pager -l 2>&1");
-    $sections[] = "=== systemctl status " . UNIFING_SERVICE . " ===\n" . ($status ?: "");
+    $serverlog = shell_exec("docker exec " . UNIFING_APP_CONTAINER . " tail -n 200 /config/logs/server.log 2>&1");
+    $applog    = shell_exec("docker logs --tail 200 --timestamps " . UNIFING_APP_CONTAINER . " 2>&1");
+    $dblog     = shell_exec("docker logs --tail 200 --timestamps " . UNIFING_DB_CONTAINER . " 2>&1");
+    $status    = shell_exec("systemctl status " . UNIFING_SERVICE . " --no-pager -l 2>&1");
+    $ps        = shell_exec("docker ps -a --filter name=" . UNIFING_APP_CONTAINER . " --filter name=" . UNIFING_DB_CONTAINER . " 2>&1");
+    $df        = shell_exec("df -h / 2>&1");
 
-    $ps = shell_exec("docker ps -a --filter name=" . UNIFING_APP_CONTAINER . " --filter name=" . UNIFING_DB_CONTAINER . " 2>&1");
-    $sections[] = "=== docker ps -a ===\n" . ($ps ?: "");
-
-    $df = shell_exec("df -h / 2>&1");
-    $sections[] = "=== disk space ===\n" . ($df ?: "");
-
-    $applog = shell_exec("docker logs --tail 150 --timestamps " . UNIFING_APP_CONTAINER . " 2>&1");
-    $sections[] = "=== docker logs " . UNIFING_APP_CONTAINER . " (app) ===\n" . ($applog ?: "");
-
-    $dblog = shell_exec("docker logs --tail 150 --timestamps " . UNIFING_DB_CONTAINER . " 2>&1");
-    $sections[] = "=== docker logs " . UNIFING_DB_CONTAINER . " (database) ===\n" . ($dblog ?: "");
-
-    $serverlog = shell_exec("docker exec " . UNIFING_APP_CONTAINER . " tail -n 150 /config/logs/server.log 2>&1");
-    $sections[] = "=== UniFi server.log ===\n" . ($serverlog ?: "");
-
-    return implode("\n\n", $sections);
+    return array(
+        array("id" => "serverlog", "title" => $L['DIAG.TAB_SERVERLOG'],  "content" => $serverlog ?: ""),
+        array("id" => "applog",    "title" => $L['DIAG.TAB_APPLOG'],     "content" => $applog ?: ""),
+        array("id" => "dblog",     "title" => $L['DIAG.TAB_DBLOG'],      "content" => $dblog ?: ""),
+        array("id" => "systemd",   "title" => $L['DIAG.TAB_SYSTEMD'],    "content" => $status ?: ""),
+        array("id" => "containers","title" => $L['DIAG.TAB_CONTAINERS'], "content" => $ps ?: ""),
+        array("id" => "disk",      "title" => $L['DIAG.TAB_DISK'],       "content" => $df ?: ""),
+    );
 }
 
 ##########################################################################
@@ -203,7 +199,7 @@ if ($form === 'statusonly') {
 ##########################################################################
 
 if ($form === 'diagnostics') {
-    $diagnostics = unifing_diagnostics();
+    $sections = unifing_diagnostics_sections();
     LBWeb::lbheader($L['DIAG.HEADING'] . " - " . $L['BASIC.LABEL_PLUGINTITLE'], "https://wiki.loxberry.de", "help.html", true);
     include "$lbptemplatedir/diagnostics.html";
     LBWeb::lbfooter();

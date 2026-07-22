@@ -10,23 +10,44 @@
     </label>
 </div>
 
-<pre id="diagbox" style="height:75vh; overflow:auto; background:#1e1e1e; color:#d4d4d4; padding:10px; border:1px solid #ddd; font-size:12px; line-height:1.35; white-space:pre-wrap; word-break:break-all; border-radius:4px; margin:0;"><?php echo htmlspecialchars($diagnostics); ?></pre>
+<div id="diagtabs" style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px;">
+    <?php foreach ($sections as $i => $s) { ?>
+        <button type="button" class="lb-btn lb-btn-sm diag-tab" data-target="diag_<?php echo $s['id']; ?>"
+                style="<?php echo $i === 0 ? '' : 'opacity:0.6;'; ?>"><?php echo $s['title']; ?></button>
+    <?php } ?>
+</div>
+
+<?php foreach ($sections as $i => $s) { ?>
+<pre id="diag_<?php echo $s['id']; ?>" class="diag-pane" style="display:<?php echo $i === 0 ? 'block' : 'none'; ?>; height:72vh; overflow:auto; background:#1e1e1e; color:#d4d4d4; padding:10px; border:1px solid #ddd; font-size:12px; line-height:1.35; white-space:pre-wrap; word-break:break-all; border-radius:4px; margin:0;"><?php echo htmlspecialchars($s['content']); ?></pre>
+<?php } ?>
 
 <script>
 (function () {
-    var cb  = document.getElementById('autorefresh');
-    var box = document.getElementById('diagbox');
+    var tabs  = Array.prototype.slice.call(document.querySelectorAll('.diag-tab'));
+    var panes = Array.prototype.slice.call(document.querySelectorAll('.diag-pane'));
+    var cb    = document.getElementById('autorefresh');
     var timer = null;
+
+    function activate(id) {
+        panes.forEach(function (p) { p.style.display = (p.id === id) ? 'block' : 'none'; });
+        tabs.forEach(function (t) { t.style.opacity = (t.getAttribute('data-target') === id) ? '1' : '0.6'; });
+    }
+    tabs.forEach(function (t) {
+        t.addEventListener('click', function () { activate(t.getAttribute('data-target')); });
+    });
 
     function refresh() {
         fetch('index.php?form=diagnostics', { cache: 'no-store', credentials: 'same-origin' })
             .then(function (r) { return r.text(); })
             .then(function (html) {
-                var src = new DOMParser().parseFromString(html, 'text/html').getElementById('diagbox');
-                if (!box || !src) { return; }
-                var top = box.scrollTop;
-                box.textContent = src.textContent;
-                box.scrollTop = top;
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                panes.forEach(function (p) {
+                    var src = doc.getElementById(p.id);
+                    if (!src) { return; }
+                    var atBottom = (p.scrollTop + p.clientHeight >= p.scrollHeight - 20);
+                    p.textContent = src.textContent;
+                    if (atBottom) { p.scrollTop = p.scrollHeight; }
+                });
             })
             .catch(function () {});
     }
