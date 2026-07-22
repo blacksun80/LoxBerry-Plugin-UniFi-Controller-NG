@@ -189,8 +189,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ##########################################################################
 
 if ($form === 'statusonly') {
-    header("Content-Type: text/plain; charset=utf-8");
-    echo unifing_service_status();
+    header("Content-Type: application/json; charset=utf-8");
+    echo json_encode(array(
+        "status"     => unifing_service_status(),
+        "controller" => unifing_controller_version(),
+    ));
     exit;
 }
 
