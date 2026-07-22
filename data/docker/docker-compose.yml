@@ -4,6 +4,7 @@
 # ${VERSION} and ${MONGO_PASS} are substituted from the .env file in this
 # directory (a symlink to the plugin config env, created by postroot.sh).
 # init-mongo.js receives the same generated password at install time.
+name: unifing
 services:
   unifing-app:
     image: lscr.io/linuxserver/unifi-network-application:${VERSION}
@@ -19,7 +20,7 @@ services:
       - MEM_LIMIT=1024
       - MEM_STARTUP=256
     volumes:
-      - REPLACELBPDATADIR/appdata:/config
+      - unifing-appdata:/config
     ports:
       - 8443:8443
       - 3478:3478/udp
@@ -39,6 +40,15 @@ services:
     image: docker.io/mongo:4.4
     container_name: unifing-db
     volumes:
-      - REPLACELBPDATADIR/db:/data/db
+      - unifing-dbdata:/data/db
       - REPLACELBPDATADIR/docker/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     restart: unless-stopped
+
+# Named volumes persist independently of the plugin folder, so the UniFi config
+# and MongoDB data survive a plugin update (which deletes and recreates the
+# plugin folder). They are removed explicitly on uninstall.
+volumes:
+  unifing-appdata:
+    name: unifing-appdata
+  unifing-dbdata:
+    name: unifing-dbdata
