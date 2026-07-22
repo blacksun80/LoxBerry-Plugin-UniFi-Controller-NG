@@ -1,0 +1,43 @@
+<div class="lb-content">
+<h2><?php echo $L['DIAG.HEADING']; ?></h2>
+<p><i><?php echo $L['DIAG.DESC']; ?></i></p>
+
+<div style="margin-bottom:8px;">
+    <a class="lb-btn lb-btn-sm" href="index.php"><?php echo $L['DIAG.BTN_BACK']; ?></a>
+    <a class="lb-btn lb-btn-sm" href="index.php?form=diagnostics"><?php echo $L['DIAG.BTN_REFRESH']; ?></a>
+    <label style="margin-left:12px;">
+        <input type="checkbox" id="autorefresh" checked> <?php echo $L['DIAG.AUTOREFRESH']; ?>
+    </label>
+</div>
+
+<pre id="diagbox" style="height:75vh; overflow:auto; background:#1e1e1e; color:#d4d4d4; padding:10px; border:1px solid #ddd; font-size:12px; line-height:1.35; white-space:pre-wrap; word-break:break-all; border-radius:4px; margin:0;"><?php echo htmlspecialchars($diagnostics); ?></pre>
+
+<script>
+(function () {
+    var cb  = document.getElementById('autorefresh');
+    var box = document.getElementById('diagbox');
+    var timer = null;
+
+    function refresh() {
+        fetch('index.php?form=diagnostics', { cache: 'no-store', credentials: 'same-origin' })
+            .then(function (r) { return r.text(); })
+            .then(function (html) {
+                var src = new DOMParser().parseFromString(html, 'text/html').getElementById('diagbox');
+                if (!box || !src) { return; }
+                var top = box.scrollTop;
+                box.textContent = src.textContent;
+                box.scrollTop = top;
+            })
+            .catch(function () {});
+    }
+    function schedule() {
+        if (cb.checked) { timer = setTimeout(function () { refresh(); schedule(); }, 5000); }
+    }
+    cb.addEventListener('change', function () {
+        if (timer) { clearTimeout(timer); timer = null; }
+        schedule();
+    });
+    schedule();
+})();
+</script>
+</div>

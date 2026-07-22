@@ -1,0 +1,87 @@
+<?php
+$uihost = preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST']);
+$uiurl  = "https://$uihost:8443";
+$options = $versions;
+if (empty($options)) {
+    $options = array_filter(array($containerversion, 'latest'));
+}
+?>
+<div class="lb-content" style="max-width:900px;">
+
+<!-- ============================================================ STATUS -->
+<h2><?php echo $L['MAIN.HEADING_STATUS']; ?></h2>
+
+<div class="lb-form-row">
+    <label class="lb-form-label"><?php echo $L['MAIN.SERVICE_STATUS']; ?></label>
+    <div class="lb-form-field"><b id="fld_status"><?php echo htmlspecialchars($status); ?></b></div>
+</div>
+<div class="lb-form-row">
+    <label class="lb-form-label"><?php echo $L['MAIN.CONTAINER_VERSION']; ?></label>
+    <div class="lb-form-field"><?php echo htmlspecialchars($containerversion); ?></div>
+</div>
+<div class="lb-form-row">
+    <label class="lb-form-label"><?php echo $L['MAIN.CONTROLLER_VERSION']; ?></label>
+    <div class="lb-form-field"><?php echo htmlspecialchars($controllerversion); ?></div>
+</div>
+<div class="lb-form-help hint"><?php echo $L['MAIN.CONTROLLER_VERSION_HELP']; ?></div>
+
+<?php if ($status === 'failed') { ?>
+<div class="lb-card" style="border-color:#c0392b;">
+    <b><?php echo $L['MAIN.FAILED_HINT']; ?></b>
+</div>
+<?php } ?>
+
+<!-- ============================================================ VERSION -->
+<h2><?php echo $L['MAIN.HEADING_VERSION']; ?></h2>
+<p><i><?php echo $L['MAIN.VERSION_DESC']; ?></i></p>
+<form method="post" action="index.php?form=setversion">
+    <div class="lb-form-row">
+        <label class="lb-form-label" for="version"><?php echo $L['MAIN.LABEL_SELECT_VERSION']; ?></label>
+        <div class="lb-form-field">
+            <select class="lb-select" name="version" id="version">
+                <?php foreach ($options as $v) { ?>
+                    <option value="<?php echo htmlspecialchars($v); ?>" <?php echo ($v === $containerversion) ? 'selected' : ''; ?>><?php echo htmlspecialchars($v); ?></option>
+                <?php } ?>
+            </select>
+        </div>
+    </div>
+    <button class="lb-btn lb-btn-primary" type="submit"><?php echo $L['MAIN.BTN_CHANGE_VERSION']; ?></button>
+    <div class="lb-form-help hint"><?php echo $L['MAIN.DOWNGRADE_WARNING']; ?></div>
+</form>
+
+<!-- ============================================================ RESET -->
+<h2><?php echo $L['MAIN.HEADING_RESET']; ?></h2>
+<p><i><?php echo $L['MAIN.RESET_DESC']; ?></i></p>
+<form method="post" action="index.php?form=reset" onsubmit="return confirm('<?php echo $L['MAIN.RESET_CONFIRM']; ?>');">
+    <button class="lb-btn lb-btn-danger" type="submit"><?php echo $L['MAIN.BTN_RESET']; ?></button>
+</form>
+
+<!-- ============================================================ DIAGNOSTICS -->
+<h2><?php echo $L['MAIN.HEADING_DIAGNOSTICS']; ?></h2>
+<p><i><?php echo $L['MAIN.DIAGNOSTICS_DESC']; ?></i></p>
+<button class="lb-btn" type="button" onclick="window.open('index.php?form=diagnostics','unifing_diagnostics','width=900,height=800,resizable=yes,scrollbars=yes');"><?php echo $L['MAIN.BTN_DIAGNOSTICS']; ?></button>
+
+<!-- ============================================================ CONFIGURATION -->
+<h2><?php echo $L['MAIN.HEADING_CONFIG']; ?></h2>
+<p><i><?php echo $L['MAIN.CONFIG_INTRO']; ?></i></p>
+<p><?php echo $L['MAIN.CONFIG_HOWTO']; ?></p>
+
+<!-- ============================================================ WEB INTERFACE -->
+<h2><?php echo $L['MAIN.HEADING_WEBUI']; ?></h2>
+<p><i><?php echo $L['MAIN.WEBUI_DESC']; ?></i></p>
+<a class="lb-btn" href="<?php echo htmlspecialchars($uiurl); ?>" target="_blank"><?php echo $L['MAIN.BTN_OPEN_UI']; ?></a>
+
+</div>
+
+<script>
+// Update the service-status field periodically without reloading the whole page.
+setInterval(function () {
+    fetch('index.php?form=statusonly', { cache: 'no-store', credentials: 'same-origin' })
+        .then(function (r) { return r.text(); })
+        .then(function (t) {
+            var el = document.getElementById('fld_status');
+            if (el) { el.textContent = t.trim(); }
+        })
+        .catch(function () {});
+}, 10000);
+</script>
