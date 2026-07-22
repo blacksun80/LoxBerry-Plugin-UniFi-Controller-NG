@@ -107,6 +107,14 @@ $diagtabs = array(
     <h2 style="margin-top:0;"><?php echo $L['MAIN.HEADING_CONFIG']; ?></h2>
     <p><i><?php echo $L['MAIN.CONFIG_INTRO']; ?></i></p>
     <p><?php echo $L['MAIN.CONFIG_HOWTO']; ?></p>
+    <button class="lb-btn lb-btn-sm lb-btn-icon" type="button"
+            onclick="var w=document.getElementById('screenshot_wrap'); w.style.display=(w.style.display==='none')?'block':'none';">
+        <i class="pi pi-image"></i> <?php echo $L['MAIN.BTN_SCREENSHOT']; ?>
+    </button>
+    <div id="screenshot_wrap" style="display:none; margin-top:10px;">
+        <img src="/plugins/unifing/inform_host.jpg" alt="Inform Host Override"
+             style="max-width:100%; border:1px solid #ddd; border-radius:4px;">
+    </div>
 </div>
 
 <!-- ============================================================ WEB INTERFACE -->
