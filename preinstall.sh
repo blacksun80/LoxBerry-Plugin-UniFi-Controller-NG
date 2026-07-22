@@ -14,4 +14,16 @@ if [ "$?" != "0" ]; then
 fi
 echo "<OK> Docker is available"
 
+# The old "UniFi Controller" plugin runs a second controller on the same ports
+# (8443 etc.). Two controllers cannot run side by side, so refuse to install
+# alongside it. The old plugin installs /etc/systemd/system/unifi.service.
+if [ -f /etc/systemd/system/unifi.service ]; then
+    echo "<ERROR> The old 'UniFi Controller' plugin appears to be installed"
+    echo "<ERROR> (found /etc/systemd/system/unifi.service). Two controllers cannot"
+    echo "<ERROR> run side by side (port 8443 conflict). Please uninstall the old"
+    echo "<ERROR> plugin first, then install UniFi Controller NG."
+    exit 2
+fi
+echo "<OK> No conflicting UniFi Controller plugin found"
+
 exit 0
