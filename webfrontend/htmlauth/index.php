@@ -198,14 +198,16 @@ if ($form === 'statusonly') {
 }
 
 ##########################################################################
-# Diagnostics page (opened in its own window)
+# Diagnostics data (JSON, lazy-loaded by the collapsible on the main page)
 ##########################################################################
 
-if ($form === 'diagnostics') {
-    $sections = unifing_diagnostics_sections();
-    LBWeb::lbheader($L['DIAG.HEADING'] . " - " . $L['BASIC.LABEL_PLUGINTITLE'], "https://wiki.loxberry.de", "help.html", true);
-    include "$lbptemplatedir/diagnostics.html";
-    LBWeb::lbfooter();
+if ($form === 'diagdata') {
+    header("Content-Type: application/json; charset=utf-8");
+    $out = array();
+    foreach (unifing_diagnostics_sections() as $s) {
+        $out[$s['id']] = $s['content'];
+    }
+    echo json_encode($out);
     exit;
 }
 

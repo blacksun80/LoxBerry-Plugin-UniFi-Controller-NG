@@ -15,7 +15,18 @@ function unifing_status_style($status)
     }
     return 'font-weight:bold;';
 }
+$diagtabs = array(
+    array('id' => 'serverlog',  'title' => $L['DIAG.TAB_SERVERLOG']),
+    array('id' => 'applog',     'title' => $L['DIAG.TAB_APPLOG']),
+    array('id' => 'dblog',      'title' => $L['DIAG.TAB_DBLOG']),
+    array('id' => 'systemd',    'title' => $L['DIAG.TAB_SYSTEMD']),
+    array('id' => 'containers', 'title' => $L['DIAG.TAB_CONTAINERS']),
+    array('id' => 'disk',       'title' => $L['DIAG.TAB_DISK']),
+);
 ?>
+<style>
+.lb-card, #diagcard { margin-bottom: 26px; }
+</style>
 <div class="lb-content">
 
 <!-- ============================================================ STATUS -->
@@ -70,11 +81,25 @@ function unifing_status_style($status)
     </form>
 </div>
 
-<!-- ============================================================ DIAGNOSTICS -->
-<div class="lb-card">
-    <h2 style="margin-top:0;"><?php echo $L['MAIN.HEADING_DIAGNOSTICS']; ?></h2>
-    <p><i><?php echo $L['MAIN.DIAGNOSTICS_DESC']; ?></i></p>
-    <button class="lb-btn lb-btn-icon" type="button" onclick="window.open('index.php?form=diagnostics','unifing_diagnostics','width=1000,height=800,resizable=yes,scrollbars=yes');"><i class="pi pi-search"></i> <?php echo $L['MAIN.BTN_DIAGNOSTICS']; ?></button>
+<!-- ============================================================ DIAGNOSTICS (collapsible, lazy) -->
+<div class="lb-card" id="diagcard">
+    <details class="lb-collapsible" id="diagdetails">
+        <summary style="font-size:1.4em; font-weight:bold;"><?php echo $L['MAIN.HEADING_DIAGNOSTICS']; ?></summary>
+        <div class="lb-collapsible-content">
+            <p><i><?php echo $L['MAIN.DIAGNOSTICS_DESC']; ?></i></p>
+            <div style="margin-bottom:6px;">
+                <?php foreach ($diagtabs as $i => $t) { ?>
+                    <button type="button" class="lb-btn lb-btn-sm diag-tab" data-target="diag_<?php echo $t['id']; ?>" style="<?php echo $i === 0 ? '' : 'opacity:0.6;'; ?>"><?php echo $t['title']; ?></button>
+                <?php } ?>
+                <label style="margin-left:12px;">
+                    <input type="checkbox" id="diag_autorefresh" checked> <?php echo $L['DIAG.AUTOREFRESH']; ?>
+                </label>
+            </div>
+            <?php foreach ($diagtabs as $i => $t) { ?>
+            <pre id="diag_<?php echo $t['id']; ?>" class="diag-pane" style="display:<?php echo $i === 0 ? 'block' : 'none'; ?>; height:45vh; overflow:auto; background:#1e1e1e; color:#d4d4d4; padding:10px; border:1px solid #ddd; font-size:12px; line-height:1.35; white-space:pre-wrap; word-break:break-all; border-radius:4px; margin:0;">...</pre>
+            <?php } ?>
+        </div>
+    </details>
 </div>
 
 <!-- ============================================================ CONFIGURATION -->
@@ -94,7 +119,7 @@ function unifing_status_style($status)
 </div>
 
 <script>
-// Live-update service status (with colour) and controller version.
+// --- Live status + controller version -------------------------------------
 function unifingStatusColor(s) {
     if (s === 'active') { return '#155724'; }
     if (s === 'failed') { return '#721c24'; }
@@ -111,4 +136,48 @@ setInterval(function () {
         })
         .catch(function () {});
 }, 10000);
+
+// --- Collapsible diagnostics with tabs (lazy-loaded, refreshes while open) --
+(function () {
+    var det   = document.getElementById('diagdetails');
+    var cb    = document.getElementById('diag_autorefresh');
+    var tabs  = Array.prototype.slice.call(document.querySelectorAll('.diag-tab'));
+    var panes = Array.prototype.slice.call(document.querySelectorAll('.diag-pane'));
+    var ids   = ['serverlog', 'applog', 'dblog', 'systemd', 'containers', 'disk'];
+    var timer = null;
+
+    function activate(id) {
+        panes.forEach(function (p) { p.style.display = (p.id === id) ? 'block' : 'none'; });
+        tabs.forEach(function (t) { t.style.opacity = (t.getAttribute('data-target') === id) ? '1' : '0.6'; });
+    }
+    tabs.forEach(function (t) {
+        t.addEventListener('click', function () { activate(t.getAttribute('data-target')); });
+    });
+
+    function load() {
+        fetch('index.php?form=diagdata', { cache: 'no-store', credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                ids.forEach(function (id) {
+                    var p = document.getElementById('diag_' + id);
+                    if (!p || d[id] === undefined) { return; }
+                    var atBottom = (p.scrollTop + p.clientHeight >= p.scrollHeight - 20);
+                    p.textContent = d[id];
+                    if (atBottom) { p.scrollTop = p.scrollHeight; }
+                });
+            })
+            .catch(function () {});
+    }
+    function schedule() {
+        if (det.open && cb.checked) { timer = setTimeout(function () { load(); schedule(); }, 5000); }
+    }
+    det.addEventListener('toggle', function () {
+        if (det.open) { load(); schedule(); }
+        else if (timer) { clearTimeout(timer); timer = null; }
+    });
+    cb.addEventListener('change', function () {
+        if (timer) { clearTimeout(timer); timer = null; }
+        schedule();
+    });
+})();
 </script>
