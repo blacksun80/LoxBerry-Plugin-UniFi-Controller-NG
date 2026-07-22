@@ -1,0 +1,16 @@
+# Installed to /etc/systemd/system/unifing.service by postroot.sh.
+[Unit]
+Description=UniFi Controller NG (Docker Compose)
+Requires=docker.service
+After=docker.service network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=REPLACELBPDATADIR/docker
+ExecStart=/usr/bin/docker compose up -d --remove-orphans
+ExecStop=/usr/bin/docker compose down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
