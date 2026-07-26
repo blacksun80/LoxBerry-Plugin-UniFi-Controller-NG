@@ -220,7 +220,7 @@ $containerversion = unifing_container_version($envfile);
 $controllerversion = unifing_controller_version();
 $versions       = unifing_versions();
 
-LBWeb::lbheader($L['BASIC.LABEL_PLUGINTITLE'] . " V$version", "https://wiki.loxberry.de", "help.html", true);
+LBWeb::lbheader($L['BASIC.LABEL_PLUGINTITLE'] . " V$version", "https://wiki.loxberry.de/plugins/unifi_controller_plugin-ng/start", "help.html", true);
 include "$lbptemplatedir/main.html";
 LBWeb::lbfooter();
 exit;
