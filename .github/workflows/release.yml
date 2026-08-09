@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version (z.B. 1.0.1 oder 1.0.0.1)"
+        description: "Version zweistellig (z.B. 1.0 oder 1.1)"
         required: true
       channel:
         description: "Kanal"
