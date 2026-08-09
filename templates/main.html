@@ -52,6 +52,17 @@ $diagtabs = array(
         <b><?php echo $L['MAIN.FAILED_HINT']; ?></b>
     </div>
     <?php } ?>
+    <?php if (!$dbzustand['ok']) { ?>
+    <div id="fld_db_warnung" class="lb-card" style="border-color:#c0392b; background:#f8d7da; margin-top:10px;">
+        <b><?php echo $L['MAIN.DB_PROBLEM_TITEL']; ?></b><br>
+        <span id="fld_db_meldung"><?php echo $dbzustand['meldung']; ?></span>
+    </div>
+    <?php } else { ?>
+    <div id="fld_db_warnung" class="lb-card" style="border-color:#c0392b; background:#f8d7da; margin-top:10px; display:none;">
+        <b><?php echo $L['MAIN.DB_PROBLEM_TITEL']; ?></b><br>
+        <span id="fld_db_meldung"></span>
+    </div>
+    <?php } ?>
 </div>
 
 <!-- ============================================================ VERSION -->
@@ -141,6 +152,12 @@ setInterval(function () {
             if (s && d.status) { s.textContent = d.status; s.style.color = unifingStatusColor(d.status); }
             var c = document.getElementById('fld_controller');
             if (c && d.controller) { c.textContent = d.controller; }
+            var w = document.getElementById('fld_db_warnung');
+            var m = document.getElementById('fld_db_meldung');
+            if (w && m && typeof d.db_ok !== 'undefined') {
+                w.style.display = d.db_ok ? 'none' : 'block';
+                if (!d.db_ok) { m.textContent = d.db_meldung; }
+            }
         })
         .catch(function () {});
 }, 10000);

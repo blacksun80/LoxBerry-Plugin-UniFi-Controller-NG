@@ -134,6 +134,46 @@ function unifing_versions()
     return $items;
 }
 
+// Zustand des Datenbank-Containers direkt pruefen, statt uns auf den
+// systemd-Status des Dienstwrappers zu verlassen: "docker compose up" meldet
+// Erfolg, sobald die Container GESTARTET wurden. Ein Container, der seither
+// in einer Neustartschleife haengt (z.B. weil das Mongo-Abbild auf dieser
+// CPU nicht laeuft), faerbt den Service-Status trotzdem gruen ("active") -
+// die eigentliche Ursache stand bislang nur vergraben in 200 Log-Zeilen im
+// Diagnose-Bereich, den man erst manuell aufklappen musste.
+function unifing_db_zustand()
+{
+    global $L;
+
+    $out = shell_exec("docker inspect " . UNIFING_DB_CONTAINER . " --format '{{.State.Status}}|{{.RestartCount}}' 2>&1");
+    $out = $out === null ? '' : trim($out);
+    if ($out === '' || strpos($out, 'No such') !== false) {
+        return array("ok" => false, "meldung" => $L['DIAG_DB.FEHLT']);
+    }
+
+    list($dockerstatus, $restarts) = array_pad(explode('|', $out, 2), 2, '0');
+    $restarts = (int) $restarts;
+
+    if ($dockerstatus === 'running') {
+        return array("ok" => true, "meldung" => "");
+    }
+
+    // Nicht "running" - Ursache aus dem Log ableiten, statt nur "nicht
+    // erreichbar" zu melden. Bekannte Signatur zuerst: MongoDB bricht auf
+    // Boards ohne ARMv8.2-A (z.B. Raspberry Pi 3, Cortex-A53) sofort mit
+    // "Illegal instruction" ab und schreibt die Ursache selbst ins Log.
+    $log = shell_exec("docker logs --tail 60 " . UNIFING_DB_CONTAINER . " 2>&1");
+    $log = $log === null ? '' : $log;
+
+    if (stripos($log, 'ARMv8.2-A') !== false || stripos($log, 'Illegal instruction') !== false) {
+        return array("ok" => false, "meldung" => $L['DIAG_DB.CPU_INKOMPATIBEL']);
+    }
+    if ($restarts > 2) {
+        return array("ok" => false, "meldung" => sprintf($L['DIAG_DB.NEUSTARTSCHLEIFE'], $restarts));
+    }
+    return array("ok" => false, "meldung" => sprintf($L['DIAG_DB.NICHT_AKTIV'], htmlspecialchars($dockerstatus)));
+}
+
 function unifing_ctl($action)
 {
     $allowed = array("restart", "start", "stop", "reset");
@@ -190,9 +230,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if ($form === 'statusonly') {
     header("Content-Type: application/json; charset=utf-8");
+    $db = unifing_db_zustand();
     echo json_encode(array(
         "status"     => unifing_service_status(),
         "controller" => unifing_controller_version(),
+        "db_ok"      => $db['ok'],
+        "db_meldung" => $db['meldung'],
     ));
     exit;
 }
@@ -219,6 +262,7 @@ $status         = unifing_service_status();
 $containerversion = unifing_container_version($envfile);
 $controllerversion = unifing_controller_version();
 $versions       = unifing_versions();
+$dbzustand      = unifing_db_zustand();
 
 LBWeb::lbheader($L['BASIC.LABEL_PLUGINTITLE'] . " V$version", "https://wiki.loxberry.de/plugins/unifi_controller_plugin-ng/start", "help.html", true);
 include "$lbptemplatedir/main.html";

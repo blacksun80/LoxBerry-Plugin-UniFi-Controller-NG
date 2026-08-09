@@ -37,7 +37,16 @@ services:
     restart: unless-stopped
 
   unifing-db:
-    image: docker.io/mongo:4.4
+    # Bewusst auf einen Patch-Stand fixiert, NICHT auf die wandernde Reihen-Tag
+    # "4.4": ab 4.4.19 verlangt das Abbild ARMv8.2-A. Aeltere 64-Bit-Boards wie
+    # der Raspberry Pi 3 (Cortex-A53, nur ARMv8-A) starten dann ueberhaupt
+    # nicht mehr - der Prozess bricht sofort mit "Illegal instruction" ab, und
+    # der davon abhaengige unifing-app-Container haengt dauerhaft bei "Waiting
+    # for MONGO_HOST". Nachgestellt: docker.io/mongo:4.4 zeigte inzwischen auf
+    # eine Fassung >=4.4.19 und stuerzte auf einem Raspberry Pi 3B+ ab;
+    # docker.io/mongo:4.4.18 startete auf demselben Geraet fehlerfrei, auch mit
+    # dem bereits vorhandenen Datenverzeichnis.
+    image: docker.io/mongo:4.4.18
     container_name: unifing-db
     volumes:
       - unifing-dbdata:/data/db
