@@ -18,6 +18,10 @@ Bibliotheken). Nur 64-Bit.
 - Ein laufender **Docker Engine** mit dem `docker compose`-v2-Plugin, erreichbar für
   den Benutzer `loxberry` (`/var/run/docker.sock`).
 - Etwa **1-2 GB freier Arbeitsspeicher** (Java-Anwendung + MongoDB).
+- Für eine Neuinstallation etwa **3 GB freier Speicherplatz** im Docker-Datenverzeichnis
+  (die beiden Abbilder belegen entpackt rund 1,7 GB). Die Installation prüft das vorab
+  und bricht mit einer Meldung ab, wenn zu wenig frei ist; bereits vorhandene Abbilder
+  werden dabei nicht mitgerechnet.
 
 ## Funktionen
 
@@ -27,6 +31,10 @@ Bibliotheken). Nur 64-Bit.
 - Datenbank-Diagnose auf der Hauptseite: erkennt eine Neustartschleife des
   Datenbank-Containers direkt und benennt die Ursache im Klartext, statt sie in den
   rohen Container-Logs zu verstecken.
+- Fortschrittsanzeige im Installationsprotokoll beim Herunterladen der Abbilder
+  (geladene und entpackte Schichten, Zwischenmeldung alle 30 Sekunden). Bereits
+  vorhandene Abbilder werden nicht erneut geladen, ein Plugin-Update hebt die
+  UniFi-Version also nicht ungefragt an.
 
 ## Bekannter Stolperstein: MongoDB und ältere ARM-Boards
 

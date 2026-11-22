@@ -38,16 +38,67 @@ cp -f "$PDATA/docker/unifing.service" /etc/systemd/system/unifing.service
 systemctl daemon-reload
 systemctl enable unifing
 
-# 'systemctl restart' blocks until the unit finishes, and unifing.service is
-# Type=oneshot running 'docker compose up -d' - so this call waits for BOTH
-# images (UniFi Network Application + MongoDB, several hundred MB combined)
-# to be pulled AND both containers to start before returning. Nothing is
-# echoed to the install log during that time, which looks like a hang rather
-# than a normal image download - especially on a Raspberry Pi's slower
-# storage/network. This step alone took 1m25s pulling fresh images during
-# testing; a few minutes on a slow connection is expected, not broken.
-echo "<INFO> Pulling Docker images and starting containers - first run only,"
-echo "<INFO> can take several minutes depending on your internet connection."
+# Laedt das Abbild eines Dienstes, falls es fehlt, und meldet den Fortschritt je Schicht.
+pull_with_progress() {
+    local SVC=$1 IMAGE LINE ID STATUS BEFORE RC=1 ERRLINE="" LAST=$SECONDS
+    local -A SEEN=() DOWNLOADED=() EXTRACTED=()
+
+    IMAGE=$(docker compose config --images "$SVC" 2>/dev/null)
+    if [ -n "$IMAGE" ] && docker image inspect "$IMAGE" >/dev/null 2>&1; then
+        echo "<OK> Image already present: $IMAGE"
+        return 0
+    fi
+    echo "<INFO> Downloading image ${IMAGE:-$SVC} - this can take several minutes."
+
+    while true; do
+        if IFS= read -r -t 30 LINE; then
+            case "$LINE" in
+                __RC=*) RC=${LINE#__RC=}; break ;;
+            esac
+            read -r ID STATUS <<< "$LINE"
+            if [[ $ID =~ ^[0-9a-f]{12}$ ]]; then
+                # Nur angekuendigte Schichten zaehlen, keine Konfigurations-Objekte.
+                case "$STATUS" in
+                    "Pulling fs layer"*|"Already exists"*) SEEN[$ID]=1 ;;
+                esac
+                BEFORE="${#DOWNLOADED[@]}/${#EXTRACTED[@]}"
+                if [ -n "${SEEN[$ID]}" ]; then
+                    case "$STATUS" in
+                        "Download complete"*) DOWNLOADED[$ID]=1 ;;
+                        "Pull complete"*|"Already exists"*) DOWNLOADED[$ID]=1; EXTRACTED[$ID]=1 ;;
+                    esac
+                fi
+                if [ "$BEFORE" != "${#DOWNLOADED[@]}/${#EXTRACTED[@]}" ]; then
+                    echo "<INFO>   Layers downloaded ${#DOWNLOADED[@]}/${#SEEN[@]}, extracted ${#EXTRACTED[@]}/${#SEEN[@]}"
+                    LAST=$SECONDS
+                fi
+            elif [[ ${LINE,,} == *error* ]]; then
+                ERRLINE=$LINE
+            fi
+        elif [ $? -le 128 ]; then
+            break
+        fi
+        if [ $((SECONDS - LAST)) -ge 30 ]; then
+            echo "<INFO>   ... still working (downloaded ${#DOWNLOADED[@]}/${#SEEN[@]}, extracted ${#EXTRACTED[@]}/${#SEEN[@]} layers)"
+            LAST=$SECONDS
+        fi
+    done < <(docker compose $PROGRESS pull --policy missing "$SVC" 2>&1; PULL_RC=$?; echo; echo "__RC=$PULL_RC")
+
+    if [ "$RC" = "0" ]; then
+        echo "<OK> Image ready: ${IMAGE:-$SVC}"
+    else
+        echo "<WARNING> Could not download ${IMAGE:-$SVC}: ${ERRLINE:-unknown error}"
+        echo "<WARNING> Starting with the local image if one exists."
+    fi
+}
+
+cd "$PDATA/docker" || exit 2
+PROGRESS=""
+docker compose --progress plain version >/dev/null 2>&1 && PROGRESS="--progress plain"
+pull_with_progress unifing-db
+pull_with_progress unifing-app
+
+echo "<INFO> Starting containers"
 systemctl restart unifing
 echo "<OK> Containers started."
 
